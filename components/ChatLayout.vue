@@ -6,7 +6,7 @@
     </div>
 
     <!-- Main heading -->
-    <h1 class="main-heading">
+    <h1 class="main-heading" :style="{ fontFamily: currentFont }">
       What can I help with ?
     </h1>
 
@@ -41,7 +41,7 @@
       ></textarea>
 
       <!-- Right icon (mic, voice, etc.) -->
-      <button class="right-icon">
+      <button class="right-icon" @click="cycleFonts">
         →
       </button>
     </div>
@@ -80,6 +80,14 @@ export default {
         { backgroundColor: '#FFE0B3', fontWeight: '700', transform: 'scale(1)' },
         { backgroundColor: '#E0B3FF', fontWeight: '700', transform: 'scale(1)' },
         { backgroundColor: '#B3FFE0', fontWeight: '700', transform: 'scale(1)' }
+      ],
+      currentFont: '-apple-system',
+      fonts: [
+        'Courier, monospace',
+        'Brush Script MT, cursive',
+        'Webdings',
+        'Comic Sans MS, cursive',
+        'Impact, fantasy'
       ]
     };
   },
@@ -91,6 +99,23 @@ export default {
       const textarea = e.target;
       textarea.style.height = 'auto';
       textarea.style.height = textarea.scrollHeight + 'px';
+    },
+    cycleFonts() {
+      let index = 0;
+      const interval = 100; // Time between changes
+      
+      const cycle = () => {
+        this.currentFont = this.fonts[index];
+        index++;
+        
+        if (index < this.fonts.length) {
+          setTimeout(cycle, interval);
+        } else {
+          this.currentFont = '-apple-system'; // Reset to default
+        }
+      };
+      
+      cycle();
     }
   }
 };
@@ -135,6 +160,7 @@ export default {
   font-size: 2rem;      /* Adjust as you wish */
   margin-bottom: 24px;
   font-weight: 500;
+  transition: font-family 0.1s ease;
 }
 
 /* The input container with border, background, etc. */
