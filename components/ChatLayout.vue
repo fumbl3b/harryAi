@@ -7,14 +7,13 @@
 
     <!-- Main heading -->
     <h1 class="main-heading">
-      What can I help with?
+      What can I help with ?
     </h1>
 
     <!-- Input container -->
     <div class="input-container">
       <!-- Left icon or placeholder -->
       <div class="left-icon">
-        <!-- Example: a simple arrow or plus icon (replace with anything) -->
         <svg
           xmlns="http://www.w3.org/2000/svg"
           class="svg-icon"
@@ -25,23 +24,26 @@
           <path
             stroke-linecap="round"
             stroke-linejoin="round"
-            stroke-width="2"
-            d="M11 19l-9-7 9-7M13 5l9 7-9 7"
+            stroke-width="1.5"
+            d="M10 19l-7-7 7-7M14 5l7 7-7 7"
           />
         </svg>
       </div>
 
       <!-- Actual text input -->
-      <input
+      <textarea
         class="text-input"
         type="text"
         placeholder="Message HarryAi"
-      />
+        rows="1"
+        @input="autoGrow"
+        ref="textInput"
+      ></textarea>
 
       <!-- Right icon (mic, voice, etc.) -->
-      <div class="right-icon">
-        🎤
-      </div>
+      <button class="right-icon">
+        →
+      </button>
     </div>
 
     <!-- Nav buttons -->
@@ -84,6 +86,11 @@ export default {
   methods: {
     onButtonHover(index, isHovering) {
       this.buttonStyles[index].transform = isHovering ? 'scale(1.05)' : 'scale(1)';
+    },
+    autoGrow(e) {
+      const textarea = e.target;
+      textarea.style.height = 'auto';
+      textarea.style.height = textarea.scrollHeight + 'px';
     }
   }
 };
@@ -92,6 +99,7 @@ export default {
 <style scoped>
 /* Container to fill the full screen and center content */
 .layout-container {
+  font-family: -apple-system, BlinkMacSystemFont, "Helvetica Neue", Helvetica, Arial, sans-serif;
   position: relative;           /* So we can position the avatar absolutely */
   display: flex;
   flex-direction: column;
@@ -126,6 +134,7 @@ export default {
 .main-heading {
   font-size: 2rem;      /* Adjust as you wish */
   margin-bottom: 24px;
+  font-weight: 500;
 }
 
 /* The input container with border, background, etc. */
@@ -133,24 +142,40 @@ export default {
   display: flex;
   align-items: center;
   width: 100%;
-  max-width: 400px;
+  max-width: 800px;
   border: 1px solid #3c3d3e;
-  background-color: #2d2e2f;
-  border-radius: 8px;
-  padding: 8px 12px;
+  background-color: rgba(255, 255, 255, 0.1);
+  border-radius: 25px;
+  padding: 10px 20px;
   margin-bottom: 32px;
 }
 
 /* Left icon styling */
 .left-icon {
-  margin-right: 8px;
+  margin-right: 12px;
+  display: flex;
+  align-items: center;
   color: #ccc; /* Example icon color */
 }
 
 /* Right icon styling */
 .right-icon {
-  margin-left: 8px;
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  background-color: #404244;
+  border: none;
   color: #ccc;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition: background-color 0.2s ease;
+  margin-left: 8px;
+}
+
+.right-icon:hover {
+  background-color: #4a4c4e;
 }
 
 /* SVG icons size */
@@ -158,6 +183,7 @@ export default {
   height: 20px;
   width: 20px;
   stroke: currentColor;
+  opacity: 0.7;
 }
 
 /* The text input itself */
@@ -168,6 +194,12 @@ export default {
   outline: none;
   color: #fff;
   font-size: 1rem;
+  resize: none;
+  overflow: hidden;
+  min-height: 24px;
+  line-height: 24px;
+  padding: 0;
+  font-family: inherit;
 }
 
 /* Container for nav buttons */
@@ -189,6 +221,7 @@ export default {
   cursor: pointer;
   transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
   color: #333;
+  font-family: inherit;
 }
 
 .nav-button:hover {
