@@ -5,63 +5,62 @@
       HA
     </div>
 
-    <!-- Main heading -->
-    <h1 class="main-heading" :style="{ fontFamily: currentFont }">
+    <!-- Messages area (visible when there are messages) -->
+    <div class="messages-container" v-if="messages.length > 0">
+      <div v-for="(message, idx) in messages" 
+           :key="idx" 
+           class="message"
+           :class="{ 'user-message': message.isUser }">
+        <div class="message-content">
+          {{ message.text }}
+        </div>
+      </div>
+    </div>
+
+    <!-- Main heading (only visible when no messages) -->
+    <h1 v-else class="main-heading" :style="{ fontFamily: currentFont }">
       What can I help with ?
     </h1>
 
-    <!-- Input container -->
-    <div class="input-container">
-      <!-- Left icon or placeholder -->
-      <div class="left-icon">
-        <svg
-          xmlns="http://www.w3.org/2000/svg"
-          class="svg-icon"
-          fill="none"
-          viewBox="0 0 24 24"
-          stroke="currentColor"
-        >
-          <path
-            stroke-linecap="round"
-            stroke-linejoin="round"
-            stroke-width="1.5"
-            d="M10 19l-7-7 7-7M14 5l7 7-7 7"
-          />
-        </svg>
-      </div>
-
-      <!-- Actual text input -->
-      <textarea
-        class="text-input"
-        type="text"
-        placeholder="Message HarryAi"
-        rows="1"
-        @input="autoGrow"
-        ref="textInput"
-      ></textarea>
-
-      <!-- Right icon (mic, voice, etc.) -->
-      <button class="right-icon" @click="cycleFonts">
-        →
-      </button>
-    </div>
-
-    <!-- Nav buttons -->
-    <div class="nav-buttons">
+    <!-- Nav buttons (only visible when no messages) -->
+    <div class="nav-buttons" v-if="!isChat">
       <button
         v-for="(item, index) in navItems"
         :key="index"
         class="nav-button"
         :style="[buttonStyles[index]]"
         @mouseenter="onButtonHover(index, true)"
-        @mouseleave="onButtonHover(index, false)"
-      >
+        @mouseleave="onButtonHover(index, false)">
         {{ item }}
       </button>
     </div>
 
-    <!-- Footer note -->
-    <p class="footer-text">
+    <!-- Input container (position changes based on isChat) -->
+    <div class="input-container" :class="{ 'chat-mode': isChat }">
+      <div class="left-icon">
+        <svg xmlns="http://www.w3.org/2000/svg" class="svg-icon" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M10 19l-7-7 7-7M14 5l7 7-7 7"/>
+        </svg>
+      </div>
+
+      <textarea
+        v-model="currentMessage"
+        class="text-input"
+        type="text"
+        placeholder="Message HarryAi"
+        rows="1"
+        @input="autoGrow"
+        @keyup.enter.prevent="sendMessage"
+        ref="textInput">
+      </textarea>
+
+      <button class="right-icon" @click="sendMessage">
+        →
+      </button>
+    </div>
+
+    <!-- Footer note (only visible when no messages) -->
+    <p class="footer-text" v-if="!isChat">
       HarryAi doesn't make mistakes. Trust him with your life.
     </p>
   </div>
@@ -88,7 +87,10 @@ export default {
         'Webdings',
         'Comic Sans MS, cursive',
         'Impact, fantasy'
-      ]
+      ],
+      messages: [],
+      currentMessage: '',
+      isChat: false
     };
   },
   methods: {
@@ -116,6 +118,38 @@ export default {
       };
       
       cycle();
+    },
+    sendMessage() {
+      if (!this.currentMessage.trim()) return;
+      
+      // Add user message to messages array
+      this.messages.push({
+        text: this.currentMessage,
+        isUser: true
+      });
+
+      // Enable chat mode if it's the first message
+      if (!this.isChat) {
+        this.isChat = true;
+      }
+
+      // Clear input
+      this.currentMessage = '';
+      
+      // Reset textarea height
+      this.$nextTick(() => {
+        if (this.$refs.textInput) {
+          this.$refs.textInput.style.height = 'auto';
+        }
+      });
+
+      // Simulate AI response (you can replace this with actual API call)
+      setTimeout(() => {
+        this.messages.push({
+          text: "I'm here to help! What would you like to know?",
+          isUser: false
+        });
+      }, 1000);
     }
   }
 };
@@ -259,5 +293,80 @@ export default {
 .footer-text {
   font-size: 0.85rem;
   color: #aaa;
+}
+
+/* Add these new styles to your existing CSS */
+.messages-container {
+  width: 100%;
+  max-width: 800px;
+  margin-bottom: 20px;
+  overflow-y: auto;
+  flex: 1;
+  padding: 20px;
+}
+
+.message {
+  margin-bottom: 16px;
+  display: flex;
+  flex-direction: column;
+}
+
+.message-content {
+  padding: 12px 16px;
+  border-radius: 18px;
+  max-width: 70%;
+  word-wrap: break-word;
+}
+
+.user-message {
+  align-items: flex-end;
+}
+
+.user-message .message-content {
+  background-color: #2b2c2f;
+  color: white;
+}
+
+.message:not(.user-message) .message-content {
+  background-color: #404244;
+  color: white;
+  align-self: flex-start;
+}
+
+.input-container {
+  transition: all 0.3s ease;
+}
+
+.input-container.chat-mode {
+  position: fixed;
+  bottom: 20px;
+  left: 50%;
+  transform: translateX(-50%);
+}
+
+/* Modify your existing layout-container style */
+.layout-container {
+  display: flex;
+  flex-direction: column;
+  min-height: 100vh;
+  padding: 16px;
+  box-sizing: border-box;
+  position: relative;
+}
+
+/* Add v-model to your text input */
+.text-input {
+  flex: 1;
+  background: none;
+  border: none;
+  outline: none;
+  color: #fff;
+  font-size: 1rem;
+  resize: none;
+  overflow: hidden;
+  min-height: 24px;
+  line-height: 24px;
+  padding: 0;
+  font-family: inherit;
 }
 </style>
