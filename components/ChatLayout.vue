@@ -18,7 +18,6 @@
       </div>
     </div>
 
-    <!-- Main heading without transition -->
     <h1 v-if="!isChat" class="main-heading" :style="{ fontFamily: currentFont }">
       What can I help with ?
     </h1>
@@ -48,7 +47,6 @@
       </button>
     </div>
 
-    <!-- Nav buttons without transition -->
     <div class="nav-buttons" v-if="!isChat">
       <button
         v-for="(item, index) in navItems"
@@ -328,7 +326,7 @@ export default {
 
 /* The text input itself */
 .text-input {
-  flex: 1;               /* Take up the remaining space */
+  flex: 1;
   background: none;
   border: none;
   outline: none;
@@ -340,18 +338,6 @@ export default {
   line-height: 24px;
   padding: 0;
   font-family: inherit;
-}
-
-/* Container for nav buttons */
-.nav-buttons {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 12px;
-  justify-content: center;
-  margin: 20px 0;
-  position: relative;
-  z-index: 5;
-  margin-top: 200px; /* Adjust this value to position below input */
 }
 
 /* Individual nav button */
@@ -378,7 +364,6 @@ export default {
   color: #aaa;
 }
 
-/* Add these new styles to your existing CSS */
 .messages-container {
   width: 100%;
   max-width: 800px;
@@ -426,7 +411,6 @@ export default {
   transform: translateX(-50%);
 }
 
-/* Modify your existing layout-container style */
 .layout-container {
   display: flex;
   flex-direction: column;
@@ -436,7 +420,6 @@ export default {
   position: relative;
 }
 
-/* Add v-model to your text input */
 .text-input {
   flex: 1;
   background: none;
@@ -464,7 +447,6 @@ export default {
   transition: transform 0.5s ease;
 }
 
-/* Input container styling */
 .input-container {
   display: flex;
   align-items: center;
@@ -541,26 +523,16 @@ export default {
     margin-left: 8px; /* provide small space on the left of the icon */
   }
 
-  .nav-buttons {
-    margin-top: 16px;  /* A small gap from the input */
-    padding: 0 16px;
-    width: calc(100% - 32px);
-    box-sizing: border-box;
-  }
-
-  /* Adjust main heading margin to bring it closer to the text input */
   .main-heading {
     margin-bottom: 12px; /* Reduced margin for mobile view */
   }
 
-  /* For non-chat mode, position the input container above the nav buttons */
   .input-container:not(.chat-mode) {
     top: auto;
     bottom: 80px; /* Position it above the nav buttons */
     transform: translateX(-50%);
   }
   
-  /* Fix nav buttons at the bottom so they do not overlap the input container */
   .nav-buttons {
     position: fixed;
     left: 50%;
@@ -571,21 +543,39 @@ export default {
     z-index: 5;
   }
 
-  /* For chat mode, keep the input at the bottom */
   .input-container.chat-mode {
     top: unset;
     bottom: 20px;
     transform: translateX(-50%);
   }
   
-  /* For non-chat mode (initial state), keep the input in the middle */
   .input-container:not(.chat-mode) {
     top: 50%;
     bottom: auto;
     transform: translate(-50%, -50%);
   }
-}
 
+  .input-container:not(.chat-mode) {
+    position: static;
+    transform: none;
+    width: calc(100% - 32px);
+    margin: 20px auto;
+  }
+  
+  .main-heading {
+    margin-bottom: 12px;
+    text-align: center;
+  }
+
+  .input-container.chat-mode {
+    position: fixed;
+    left: 50%;
+    bottom: 20px;
+    transform: translateX(-50%);
+    width: calc(100% - 32px);
+    margin: 0 auto;
+  }
+}
 </style>
 
 <style>
