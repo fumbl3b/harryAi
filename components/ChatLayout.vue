@@ -543,6 +543,11 @@ export default {
     z-index: 5;
   }
 
+  .nav-button:active {
+    transform: translateY(-2px);
+    filter: brightness(110%);
+  }
+
   .input-container.chat-mode {
     top: unset;
     bottom: 20px;
