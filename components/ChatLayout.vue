@@ -1,9 +1,10 @@
 <template>
   <div class="layout-container">
-    <!-- User avatar (top-right) -->
-    <div class="user-avatar">
-      HA
-    </div>
+    <a href="https://fumblebee.site" target="_blank" rel="noopener noreferrer">
+      <div class="user-avatar">
+        Hi
+      </div>
+    </a>
 
     <!-- Messages area (visible when there are messages) -->
     <div class="messages-container" v-if="messages.length > 0">
@@ -154,12 +155,13 @@ export default {
         this.glitchFonts();
         return;
       }
-      
+
       const messageText = this.currentMessage;
       
       // Immediately hide nav and heading
       this.isChat = true;
       
+      // Push user's message
       this.messages.push({
         text: messageText,
         isUser: true
@@ -172,6 +174,24 @@ export default {
           this.$refs.textInput.style.height = 'auto';
         }
       });
+
+      // Push assistant typing indicator message (ellipsis animation)
+      this.messages.push({
+        text: '...',
+        isUser: false,
+        isTyping: true
+      });
+
+      // After 1 second, update the assistant message
+      setTimeout(() => {
+        const lastIdx = this.messages.length - 1;
+        // Update the last message with the final text and remove typing indicator
+        this.$set(this.messages, lastIdx, {
+          ...this.messages[lastIdx],
+          text: "hold on, my backend isn't set up yet :(",
+          isTyping: false
+        });
+      }, 1000);
     },
     simulateTyping(index) {
       if (this.isTyping) return;
@@ -220,18 +240,26 @@ export default {
 
 /* Top-right avatar or user icon */
 .user-avatar {
-  position: absolute;
+  position: fixed; /* Changed from absolute */
   top: 16px;
   right: 16px;
   height: 40px;
   width: 40px;
-  background-color: #ff7a00;    /* Example orange color */
+  background-color: #ff7a00;
   border-radius: 50%;
   display: flex;
   align-items: center;
   justify-content: center;
   font-weight: 600;
   cursor: default;
+  outline: 6px solid rgba(32, 33, 35);
+}
+
+/* Ensure the text color inside the user-avatar (including its link) is always white */
+.user-avatar,
+.user-avatar a {
+  color: #fff !important;
+  text-decoration: none;
 }
 
 /* Main heading text */
@@ -495,6 +523,7 @@ export default {
   .text-input {
     flex: 1;
     min-height: 36px;
+    align-items: center;
     padding: 4px 8px; /* 8px padding on both sides */
     margin: 0; /* remove margins to prevent excess spacing */
     width: auto;
@@ -513,7 +542,7 @@ export default {
   }
 
   .nav-buttons {
-    margin-top: calc(50vh + 120px);
+    margin-top: 16px;  /* A small gap from the input */
     padding: 0 16px;
     width: calc(100% - 32px);
     box-sizing: border-box;
@@ -523,5 +552,45 @@ export default {
   .main-heading {
     margin-bottom: 12px; /* Reduced margin for mobile view */
   }
+
+  /* For non-chat mode, position the input container above the nav buttons */
+  .input-container:not(.chat-mode) {
+    top: auto;
+    bottom: 80px; /* Position it above the nav buttons */
+    transform: translateX(-50%);
+  }
+  
+  /* Fix nav buttons at the bottom so they do not overlap the input container */
+  .nav-buttons {
+    position: fixed;
+    left: 50%;
+    bottom: 20px;
+    transform: translateX(-50%);
+    margin: 0;
+    width: calc(100% - 32px);
+    z-index: 5;
+  }
+
+  /* For chat mode, keep the input at the bottom */
+  .input-container.chat-mode {
+    top: unset;
+    bottom: 20px;
+    transform: translateX(-50%);
+  }
+  
+  /* For non-chat mode (initial state), keep the input in the middle */
+  .input-container:not(.chat-mode) {
+    top: 50%;
+    bottom: auto;
+    transform: translate(-50%, -50%);
+  }
+}
+
+</style>
+
+<style>
+html, body {
+  background-color: #202123 !important;
+  overscroll-behavior: contain;
 }
 </style>
