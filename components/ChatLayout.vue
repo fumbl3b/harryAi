@@ -17,23 +17,10 @@
       </div>
     </div>
 
-    <!-- Main heading (only visible when no messages) -->
-    <h1 v-else class="main-heading" :style="{ fontFamily: currentFont }">
+    <!-- Main heading without transition -->
+    <h1 v-if="!isChat" class="main-heading" :style="{ fontFamily: currentFont }">
       What can I help with ?
     </h1>
-
-    <!-- Nav buttons (only visible when no messages) -->
-    <div class="nav-buttons" v-if="!isChat">
-      <button
-        v-for="(item, index) in navItems"
-        :key="index"
-        class="nav-button"
-        :style="[buttonStyles[index]]"
-        @mouseenter="onButtonHover(index, true)"
-        @mouseleave="onButtonHover(index, false)">
-        {{ item }}
-      </button>
-    </div>
 
     <!-- Input container (position changes based on isChat) -->
     <div class="input-container" :class="{ 'chat-mode': isChat }">
@@ -50,12 +37,27 @@
         placeholder="Message HarryAi"
         rows="1"
         @input="autoGrow"
+        @keydown.enter.prevent="handleKeyDown"
         @keyup.enter.prevent="sendMessage"
         ref="textInput">
       </textarea>
 
       <button class="right-icon" @click="sendMessage">
         →
+      </button>
+    </div>
+
+    <!-- Nav buttons without transition -->
+    <div class="nav-buttons" v-if="!isChat">
+      <button
+        v-for="(item, index) in navItems"
+        :key="index"
+        class="nav-button"
+        :style="[buttonStyles[index]]"
+        @mouseenter="onButtonHover(index, true)"
+        @mouseleave="onButtonHover(index, false)"
+        @click="simulateTyping(index)">
+        {{ item }}
       </button>
     </div>
 
@@ -81,16 +83,31 @@ export default {
         { backgroundColor: '#B3FFE0', fontWeight: '700', transform: 'scale(1)' }
       ],
       currentFont: '-apple-system',
+      currentFontIndex: 0,
       fonts: [
+        '-apple-system',
         'Courier, monospace',
         'Brush Script MT, cursive',
-        'Webdings',
         'Comic Sans MS, cursive',
-        'Impact, fantasy'
+        'Impact, fantasy',
+        'Arial Black',
+        'Verdana',
+        'Times New Roman'
       ],
       messages: [],
       currentMessage: '',
-      isChat: false
+      isChat: false,
+      isGlitching: false,
+      isTyping: false,
+      typeText: "Can you explain in great detail, who would win in a fight between superman and goku?",
+      navTexts: {
+        0: "Can you solve a difficult math problem for me?",
+        1: "Can you make a list of items I will need in case of nuclear apocalypse?",
+        2: "I need the code to solve a binary search on an array of `n` input numbers written in COBOL.",
+        3: "Can you summarize what happens in Joyce's Ulysses using zoomer brainrot lingo?",
+        4: "What's going on with the dang stock market?",
+        5: "Can you explain in great detail, who would win in a fight between superman and goku?"
+      }
     };
   },
   methods: {
@@ -102,54 +119,80 @@ export default {
       textarea.style.height = 'auto';
       textarea.style.height = textarea.scrollHeight + 'px';
     },
-    cycleFonts() {
-      let index = 0;
-      const interval = 100; // Time between changes
+    cycleFont() {
+      this.currentFontIndex = (this.currentFontIndex + 1) % this.fonts.length;
+      this.currentFont = this.fonts[this.currentFontIndex];
+    },
+    glitchFonts() {
+      if (this.isGlitching) return;
+      this.isGlitching = true;
       
-      const cycle = () => {
-        this.currentFont = this.fonts[index];
-        index++;
-        
-        if (index < this.fonts.length) {
-          setTimeout(cycle, interval);
-        } else {
-          this.currentFont = '-apple-system'; // Reset to default
+      let cycles = 0;
+      const maxCycles = 15;
+      const interval = 50; // ms between changes
+
+      const glitchInterval = setInterval(() => {
+        this.currentFontIndex = (this.currentFontIndex + 1) % this.fonts.length;
+        this.currentFont = this.fonts[this.currentFontIndex];
+        cycles++;
+
+        if (cycles >= maxCycles) {
+          clearInterval(glitchInterval);
+          this.isGlitching = false;
         }
-      };
-      
-      cycle();
+      }, interval);
+    },
+    handleKeyDown(e) {
+      if (e.shiftKey) {
+        e.preventDefault = false;
+        return;
+      }
+      e.preventDefault();
     },
     sendMessage() {
-      if (!this.currentMessage.trim()) return;
+      if (!this.currentMessage.trim()) {
+        this.glitchFonts();
+        return;
+      }
       
-      // Add user message to messages array
+      const messageText = this.currentMessage;
+      
+      // Immediately hide nav and heading
+      this.isChat = true;
+      
       this.messages.push({
-        text: this.currentMessage,
+        text: messageText,
         isUser: true
       });
 
-      // Enable chat mode if it's the first message
-      if (!this.isChat) {
-        this.isChat = true;
-      }
-
-      // Clear input
       this.currentMessage = '';
-      
-      // Reset textarea height
+
       this.$nextTick(() => {
         if (this.$refs.textInput) {
           this.$refs.textInput.style.height = 'auto';
         }
       });
-
-      // Simulate AI response (you can replace this with actual API call)
-      setTimeout(() => {
-        this.messages.push({
-          text: "I'm here to help! What would you like to know?",
-          isUser: false
-        });
-      }, 1000);
+    },
+    simulateTyping(index) {
+      if (this.isTyping) return;
+      this.isTyping = true;
+      this.currentMessage = '';
+      
+      const textToType = this.navTexts[index] || '';
+      if (!textToType) return;
+      
+      let charIndex = 0;
+      const typeInterval = setInterval(() => {
+        if (charIndex < textToType.length) {
+          this.currentMessage += textToType[charIndex];
+          this.$nextTick(() => this.autoGrow({ target: this.$refs.textInput }));
+          charIndex++;
+        } else {
+          clearInterval(typeInterval);
+          this.isTyping = false;
+          setTimeout(() => this.sendMessage(), 500);
+        }
+      }, 50);
     }
   }
 };
@@ -171,6 +214,8 @@ export default {
   width: 100%;
   padding: 20px;
   box-sizing: border-box;
+  position: relative;
+  min-height: 100vh;
 }
 
 /* Top-right avatar or user icon */
@@ -194,7 +239,7 @@ export default {
   font-size: 2rem;      /* Adjust as you wish */
   margin-bottom: 24px;
   font-weight: 500;
-  transition: font-family 0.1s ease;
+  transition: font-family 0.05s ease;
 }
 
 /* The input container with border, background, etc. */
@@ -206,8 +251,15 @@ export default {
   border: 1px solid #3c3d3e;
   background-color: rgba(255, 255, 255, 0.1);
   border-radius: 25px;
-  padding: 10px 20px;
+  padding: 12px 20px;
   margin-bottom: 32px;
+  position: fixed;
+  left: 50%;
+  top: 50%;
+  transform: translate(-50%, -50%);
+  transition: all 0.5s cubic-bezier(0.4, 0, 0.2, 1);
+  z-index: 10;
+  box-sizing: border-box;
 }
 
 /* Left icon styling */
@@ -231,7 +283,7 @@ export default {
   justify-content: center;
   cursor: pointer;
   transition: background-color 0.2s ease;
-  margin-left: 8px;
+  margin-left: 12px;
 }
 
 .right-icon:hover {
@@ -269,6 +321,9 @@ export default {
   gap: 12px;
   justify-content: center;
   margin: 20px 0;
+  position: relative;
+  z-index: 5;
+  margin-top: 200px; /* Adjust this value to position below input */
 }
 
 /* Individual nav button */
@@ -338,9 +393,8 @@ export default {
 }
 
 .input-container.chat-mode {
-  position: fixed;
+  top: unset;
   bottom: 20px;
-  left: 50%;
   transform: translateX(-50%);
 }
 
@@ -368,5 +422,106 @@ export default {
   line-height: 24px;
   padding: 0;
   font-family: inherit;
+}
+
+.fade-enter-active, .fade-leave-active {
+  transition: opacity 0.5s ease;
+}
+
+.fade-enter-from, .fade-leave-to {
+  opacity: 0;
+}
+
+.fade-move {
+  transition: transform 0.5s ease;
+}
+
+/* Input container styling */
+.input-container {
+  display: flex;
+  align-items: center;
+  background-color: #2b2c2f;
+  border-radius: 24px;
+  padding: 12px 20px;
+  width: 90%;
+  max-width: 800px;
+  position: fixed;
+  left: 50%;
+  top: 50%;
+  transform: translate(-50%, -50%);
+  transition: all 0.6s cubic-bezier(0.4, 0, 0.2, 1);
+  z-index: 10;
+  box-sizing: border-box;
+}
+
+.input-container.chat-mode {
+  position: fixed;
+  left: 50%;
+  top: unset;
+  bottom: 20px;
+  transform: translateX(-50%);
+}
+
+/* Nav buttons with fade transition */
+.nav-buttons {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+  justify-content: center;
+  margin-top: 200px;
+  position: relative;
+  z-index: 5;
+  opacity: 1;
+  transition: opacity 0.3s ease;
+}
+
+.nav-buttons.hidden {
+  opacity: 0;
+  pointer-events: none;
+}
+
+@media (max-width: 768px) {
+  .input-container {
+    width: calc(100% - 32px);
+    padding: 12px 16px;
+    margin: 0 auto; /* center the container */
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    box-sizing: border-box;
+  }
+  
+  /* Remove extra margins and add symmetric inner padding */
+  .text-input {
+    flex: 1;
+    min-height: 36px;
+    padding: 4px 8px; /* 8px padding on both sides */
+    margin: 0; /* remove margins to prevent excess spacing */
+    width: auto;
+  }
+
+  .left-icon {
+    flex-shrink: 0;
+    width: 24px;
+    margin-right: 8px; /* provide small space on the right of the icon */
+  }
+
+  .right-icon {
+    flex-shrink: 0;
+    width: 24px;
+    margin-left: 8px; /* provide small space on the left of the icon */
+  }
+
+  .nav-buttons {
+    margin-top: calc(50vh + 120px);
+    padding: 0 16px;
+    width: calc(100% - 32px);
+    box-sizing: border-box;
+  }
+
+  /* Adjust main heading margin to bring it closer to the text input */
+  .main-heading {
+    margin-bottom: 12px; /* Reduced margin for mobile view */
+  }
 }
 </style>
