@@ -7,14 +7,38 @@
     </a>
 
     <!-- Messages area (visible when there are messages) -->
-    <div class="messages-container" v-if="messages.length > 0">
-      <div v-for="(message, idx) in messages" 
-           :key="idx" 
-           class="message"
-           :class="{ 'user-message': message.isUser }">
-        <div class="message-content">
-          {{ message.text }}
+    <div class="messages-container" v-if="messages.length > 0" ref="messagesContainer">
+      <div class="chat-controls">
+        <button class="clear-button" @click="clearChat">
+          Clear Chat
+        </button>
+      </div>
+      
+      <div class="messages-list">
+        <div v-for="(message, idx) in messages" 
+             :key="idx" 
+             class="message"
+             :class="{ 'user-message': message.isUser }">
+          <div class="message-content">
+            <!-- User messages just show plain text -->
+            <span v-if="message.isUser" class="message-text">{{ message.text.trim() }}</span>
+            <!-- Assistant messages render markdown -->
+            <div v-else-if="!message.isTyping" class="message-text markdown-content" v-html="renderMarkdown(message.text.trim())"></div>
+            <!-- Loading animation for assistant typing -->
+            <div v-else class="message-text loading-dots">
+              <span class="dot"></span>
+              <span class="dot"></span>
+              <span class="dot"></span>
+            </div>
+          </div>
         </div>
+        
+        <!-- Extra padding at the bottom to prevent messages from being hidden by input -->
+        <div class="bottom-padding"></div>
+      </div>
+      
+      <div v-if="error" class="error-message">
+        {{ error }}
       </div>
     </div>
 
@@ -37,8 +61,7 @@
         placeholder="Message HarryAi"
         rows="1"
         @input="autoGrow"
-        @keydown.enter.prevent="handleKeyDown"
-        @keyup.enter.prevent="sendMessage"
+        @keydown.enter.prevent="handleEnterKey"
         ref="textInput">
       </textarea>
 
@@ -82,23 +105,9 @@ export default {
         { backgroundColor: '#B3FFE0', fontWeight: '700', transform: 'scale(1)' }
       ],
       currentFont: '-apple-system',
-      currentFontIndex: 0,
-      fonts: [
-        '-apple-system',
-        'Courier, monospace',
-        'Brush Script MT, cursive',
-        'Comic Sans MS, cursive',
-        'Impact, fantasy',
-        'Arial Black',
-        'Verdana',
-        'Times New Roman'
-      ],
-      messages: [],
       currentMessage: '',
-      isChat: false,
-      isGlitching: false,
       isTyping: false,
-      typeText: "Can you explain in great detail, who would win in a fight between superman and goku?",
+      userHasScrolled: false,
       navTexts: {
         0: "Can you solve a difficult math problem for me?",
         1: "Can you make a list of items I will need in case of nuclear apocalypse?",
@@ -108,6 +117,53 @@ export default {
         5: "Can you explain in great detail, who would win in a fight between superman and goku?"
       }
     };
+  },
+  
+  created() {
+    // When component is created, set up a watch on messages to handle updates
+    this.$watch('messages', () => {
+      this.scrollToBottom();
+    }, { deep: true });
+  },
+  
+  mounted() {
+    // When component is mounted, scroll to the bottom of messages
+    this.scrollToBottom();
+    
+    // Add scroll event listener to detect when user manually scrolls
+    if (this.$refs.messagesContainer) {
+      this.$refs.messagesContainer.addEventListener('scroll', this.handleScroll);
+    }
+  },
+  
+  updated() {
+    // After each update, make sure messages are visible
+    this.scrollToBottom();
+    
+    // Re-attach scroll listener if it was removed (Vue sometimes recreates refs)
+    if (this.$refs.messagesContainer && !this.$refs.messagesContainer._hasScrollListener) {
+      this.$refs.messagesContainer.addEventListener('scroll', this.handleScroll);
+      this.$refs.messagesContainer._hasScrollListener = true;
+    }
+  },
+  
+  beforeDestroy() {
+    // Clean up scroll event listener when component is destroyed
+    if (this.$refs.messagesContainer) {
+      this.$refs.messagesContainer.removeEventListener('scroll', this.handleScroll);
+    }
+  },
+  
+  computed: {
+    messages() {
+      return this.$store.getters['chat/getAllMessages'];
+    },
+    error() {
+      return this.$store.getters['chat/getError'];
+    },
+    isChat() {
+      return this.messages.length > 0;
+    }
   },
   methods: {
     onButtonHover(index, isHovering) {
@@ -141,30 +197,79 @@ export default {
         }
       }, interval);
     },
-    handleKeyDown(e) {
-      if (e.shiftKey) {
-        e.preventDefault = false;
-        return;
-      }
-      e.preventDefault();
+    handleScroll() {
+      const container = this.$refs.messagesContainer;
+      if (!container) return;
+      
+      // Check if user has scrolled up
+      // We consider them scrolled up if they're more than 100px from the bottom
+      const isAtBottom = container.scrollHeight - container.scrollTop - container.clientHeight < 100;
+      this.userHasScrolled = !isAtBottom;
     },
-    sendMessage() {
+    
+    scrollToBottom(smooth = true) {
+      const container = this.$refs.messagesContainer;
+      if (!container) return;
+      
+      // Only auto-scroll if user hasn't manually scrolled up
+      // or if we're sending a new message (which resets userHasScrolled)
+      if (!this.userHasScrolled) {
+        // First immediate call to ensure we start scrolling right away
+        if (smooth) {
+          container.scrollTo({
+            top: container.scrollHeight,
+            behavior: 'smooth'
+          });
+        } else {
+          container.scrollTop = container.scrollHeight;
+        }
+        
+        // Then wait for DOM update and call again to ensure all content is visible
+        this.$nextTick(() => {
+          if (container) {
+            if (smooth) {
+              container.scrollTo({
+                top: container.scrollHeight,
+                behavior: 'smooth'
+              });
+            } else {
+              container.scrollTop = container.scrollHeight;
+            }
+          }
+        });
+        
+        // One more time with a slight delay to catch any rendering delays
+        setTimeout(() => {
+          if (container) {
+            if (smooth) {
+              container.scrollTo({
+                top: container.scrollHeight,
+                behavior: 'smooth'
+              });
+            } else {
+              container.scrollTop = container.scrollHeight;
+            }
+          }
+        }, 100);
+      }
+    },
+    
+    handleEnterKey(e) {
+      // If shift+enter, allow multiline input
+      if (e.shiftKey) {
+        return; // Don't prevent default to allow multiline
+      }
+      
+      // Just Enter key - send the message
+      this.sendMessage();
+    },
+    async sendMessage() {
       if (!this.currentMessage.trim()) {
-        this.glitchFonts();
+        // Empty message, don't send
         return;
       }
 
       const messageText = this.currentMessage;
-      
-      // Immediately hide nav and heading
-      this.isChat = true;
-      
-      // Push user's message
-      this.messages.push({
-        text: messageText,
-        isUser: true
-      });
-
       this.currentMessage = '';
 
       this.$nextTick(() => {
@@ -172,51 +277,162 @@ export default {
           this.$refs.textInput.style.height = 'auto';
         }
       });
+      
+      // Reset userHasScrolled flag when sending a new message
+      // This ensures we always scroll to the bottom when the user sends a message
+      this.userHasScrolled = false;
 
-      // Push assistant typing indicator message (ellipsis animation)
-      this.messages.push({
+      // 1. Show the user's message in the UI
+      this.$store.commit('chat/ADD_MESSAGE', {
+        text: messageText,
+        isUser: true
+      });
+      
+      // Scroll to bottom after adding user message
+      this.scrollToBottom();
+
+      // 2. Show a loading indicator with typing animation
+      this.$store.commit('chat/ADD_MESSAGE', {
         text: '...',
         isUser: false,
         isTyping: true
       });
+      
+      // Scroll to bottom again after adding loading indicator
+      this.scrollToBottom();
 
-      // After 1 second, update the assistant message
-      setTimeout(() => {
-        const lastIdx = this.messages.length - 1;
-        // Update the last message with the final text and remove typing indicator
-        this.$set(this.messages, lastIdx, {
-          ...this.messages[lastIdx],
-          text: "hold on, my backend isn't set up yet :(",
+      try {
+        // 3. Call the OpenAI API directly
+        const response = await fetch('/api', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({ 
+            messages: [{
+              role: 'user',
+              content: messageText
+            }]
+          }),
+        });
+        
+        const data = await response.json();
+        console.log('API Response:', data);
+        
+        // 4. Update the message with the response content
+        if (data.message && data.message.content) {
+          // Replace the loading message with the actual response
+          this.$store.commit('chat/UPDATE_LAST_MESSAGE', {
+            text: data.message.content,
+            isUser: false,
+            isTyping: false
+          });
+          
+          // Force Vue to update the DOM immediately
+          this.$forceUpdate();
+          
+          // Smoothly scroll to bottom after receiving response
+          this.scrollToBottom(true);
+        } else {
+          // Handle error case
+          this.$store.commit('chat/UPDATE_LAST_MESSAGE', {
+            text: 'Sorry, I could not generate a response.',
+            isUser: false,
+            isTyping: false
+          });
+          
+          // Force Vue to update the DOM immediately
+          this.$forceUpdate();
+          
+          // Smoothly scroll to bottom after updating error message
+          this.scrollToBottom(true);
+        }
+      } catch (error) {
+        console.error('Failed to send message:', error);
+        // Update loading message with error
+        this.$store.commit('chat/UPDATE_LAST_MESSAGE', {
+          text: 'Error: Could not connect to the API.',
+          isUser: false,
           isTyping: false
         });
-      }, 1000);
+        
+        // Scroll to bottom after showing error (with smooth animation)
+        this.scrollToBottom(true);
+      }
     },
     simulateTyping(index) {
       if (this.isTyping) return;
       this.isTyping = true;
-      this.currentMessage = '';
       
       const textToType = this.navTexts[index] || '';
       if (!textToType) return;
       
-      let charIndex = 0;
-      const typeInterval = setInterval(() => {
-        if (charIndex < textToType.length) {
-          this.currentMessage += textToType[charIndex];
-          this.$nextTick(() => this.autoGrow({ target: this.$refs.textInput }));
-          charIndex++;
-        } else {
-          clearInterval(typeInterval);
-          this.isTyping = false;
-          setTimeout(() => this.sendMessage(), 500);
-        }
-      }, 50);
+      // Set the message directly in the input field
+      this.currentMessage = textToType;
+      this.$nextTick(() => this.autoGrow({ target: this.$refs.textInput }));
+      
+      // Small delay before sending
+      setTimeout(() => {
+        this.isTyping = false;
+        this.sendMessage();
+      }, 100);
+    },
+    
+    // Clears the chat history
+    clearChat() {
+      this.$store.dispatch('chat/clearChat');
+    },
+    
+    // Simple Markdown renderer using regex
+    renderMarkdown(text) {
+      if (!text) return '';
+      
+      try {
+        // Escape HTML to prevent XSS
+        let html = this.escapeHtml(text);
+        
+        // Basic code blocks
+        html = html.replace(/```([\s\S]+?)```/g, '<pre><code>$1</code></pre>');
+        
+        // Inline code
+        html = html.replace(/`([^`]+)`/g, '<code>$1</code>');
+        
+        // Bold
+        html = html.replace(/\*\*([^*]+)\*\*/g, '<strong>$1</strong>');
+        
+        // Italic
+        html = html.replace(/\*([^*]+)\*/g, '<em>$1</em>');
+        
+        // Line breaks
+        html = html.replace(/\n/g, '<br>');
+        
+        // Trigger scroll to bottom since content may have changed
+        this.$nextTick(() => this.scrollToBottom());
+        
+        return html;
+      } catch (error) {
+        console.error('Error rendering markdown:', error);
+        return this.escapeHtml(text); // Fall back to plain text
+      }
+    },
+    
+    // Helper function to escape HTML
+    escapeHtml(text) {
+      const map = {
+        '&': '&amp;',
+        '<': '&lt;',
+        '>': '&gt;',
+        '"': '&quot;',
+        "'": '&#039;'
+      };
+      
+      return text.replace(/[&<>"']/g, function(m) { return map[m]; });
     }
   }
 };
 </script>
 
-<style scoped>
+<style>
 /* Container to fill the full screen and center content */
 .layout-container {
   font-family: -apple-system, BlinkMacSystemFont, "Helvetica Neue", Helvetica, Arial, sans-serif;
@@ -367,14 +583,38 @@ export default {
 .messages-container {
   width: 100%;
   max-width: 800px;
-  margin-bottom: 20px;
+  margin-bottom: 100px; /* Increased to ensure space for input box */
   overflow-y: auto;
+  scrollbar-width: none; /* Firefox */
+  -ms-overflow-style: none; /* IE and Edge */
   flex: 1;
   padding: 20px;
+  max-height: calc(100vh - 150px);
+  display: flex;
+  flex-direction: column;
+}
+
+/* Hide scrollbar for Chrome, Safari and Opera */
+.messages-container::-webkit-scrollbar {
+  display: none;
+}
+
+.messages-list {
+  overflow-y: auto;
+  scrollbar-width: none; /* Firefox */
+  -ms-overflow-style: none; /* IE and Edge */
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+}
+
+/* Hide scrollbar for Chrome, Safari and Opera */
+.messages-list::-webkit-scrollbar {
+  display: none;
 }
 
 .message {
-  margin-bottom: 16px;
+  margin-bottom: 4px; /* Minimal space between messages */
   display: flex;
   flex-direction: column;
 }
@@ -393,12 +633,16 @@ export default {
 .user-message .message-content {
   background-color: #2b2c2f;
   color: white;
+  font-weight: normal;
+  font-size: 14px; /* Consistent font size */
 }
 
 .message:not(.user-message) .message-content {
   background-color: #404244;
   color: white;
   align-self: flex-start;
+  font-weight: 400; /* Make assistant responses easier to read */
+  font-size: 14px; /* Same font size as user messages */
 }
 
 .input-container {
@@ -470,6 +714,7 @@ export default {
   top: unset;
   bottom: 20px;
   transform: translateX(-50%);
+  z-index: 1000; /* Ensure it's above other content */
 }
 
 /* Nav buttons with fade transition */
@@ -484,6 +729,176 @@ export default {
   opacity: 1;
   transition: opacity 0.3s ease;
 }
+
+/* Chat controls */
+.chat-controls {
+  display: flex;
+  justify-content: flex-start;
+  margin-bottom: 16px;
+}
+
+.clear-button {
+  background-color: rgba(255, 255, 255, 0.1);
+  color: #ccc;
+  border: 1px solid #3c3d3e;
+  border-radius: 15px;
+  padding: 6px 12px;
+  cursor: pointer;
+  font-size: 0.8rem;
+  transition: all 0.2s ease;
+}
+
+.clear-button:hover {
+  background-color: rgba(255, 255, 255, 0.2);
+}
+
+/* Message styling */
+.message-content {
+  white-space: pre-wrap;
+  word-break: break-word;
+  line-height: 1.4;
+  padding: 6px 10px; /* Minimal padding */
+  margin: 1px 0; /* Minimal margin */
+  max-width: 90%; /* Wider messages */
+  border-radius: 16px;
+  text-indent: 0; /* Ensure no indentation */
+  padding-left: 10px; /* Consistent left padding */
+}
+
+.message-text {
+  display: inline-block;
+  white-space: pre-wrap;
+  text-indent: 0;
+  margin: 0;
+  padding: 0;
+  line-height: 1.4;
+  font-size: 14px;
+}
+
+.bottom-padding {
+  height: 80px; /* Provides space at the bottom so messages aren't hidden by input box */
+  width: 100%;
+}
+
+/* Markdown content styling for our simplified renderer */
+.markdown-content {
+  font-size: 14px; /* Ensure consistent size */
+}
+
+.markdown-content h1, 
+.markdown-content h2, 
+.markdown-content h3 {
+  margin: 10px 0 5px 0;
+  font-weight: 600;
+  line-height: 1.2;
+}
+
+.markdown-content h1 {
+  font-size: 18px;
+}
+
+.markdown-content h2 {
+  font-size: 16px;
+}
+
+.markdown-content h3 {
+  font-size: 14px;
+}
+
+.markdown-content pre {
+  background: rgba(0, 0, 0, 0.2);
+  border-radius: 4px;
+  padding: 8px;
+  overflow-x: auto;
+  margin: 8px 0;
+  max-width: 100%;
+}
+
+.markdown-content code {
+  font-family: 'Menlo', 'Monaco', 'Courier New', monospace;
+  font-size: 13px;
+  background: rgba(0, 0, 0, 0.2);
+  border-radius: 3px;
+  padding: 2px 4px;
+}
+
+.markdown-content pre code {
+  padding: 0;
+  background: transparent;
+  display: block;
+  overflow-x: auto;
+}
+
+.markdown-content ul {
+  margin: 8px 0;
+  padding-left: 20px;
+}
+
+.markdown-content li {
+  margin: 4px 0;
+}
+
+.markdown-content strong {
+  font-weight: 600;
+}
+
+.markdown-content em {
+  font-style: italic;
+}
+
+.markdown-content a {
+  color: #64B5F6;
+  text-decoration: underline;
+}
+
+/* Loading animation */
+.loading-dots {
+  display: flex;
+  align-items: center;
+  height: 20px;
+}
+
+.dot {
+  display: inline-block;
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background-color: #ccc;
+  margin-right: 4px;
+  animation: bounce 1.4s infinite ease-in-out both;
+}
+
+.dot:nth-child(1) {
+  animation-delay: -0.32s;
+}
+
+.dot:nth-child(2) {
+  animation-delay: -0.16s;
+}
+
+@keyframes bounce {
+  0%, 80%, 100% {
+    transform: scale(0);
+    opacity: 0.5;
+  }
+  40% {
+    transform: scale(1);
+    opacity: 1;
+  }
+}
+
+/* Error message */
+.error-message {
+  color: #ff6b6b;
+  padding: 10px 16px;
+  margin: 8px 0;
+  background-color: rgba(255, 107, 107, 0.1);
+  border-radius: 10px;
+  text-align: center;
+}
+
+
+
 
 .nav-buttons.hidden {
   opacity: 0;

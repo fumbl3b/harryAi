@@ -3,7 +3,13 @@ export default {
   ssr: false,
 
   // Target: https://go.nuxtjs.dev/config-target
-  target: 'static',
+  target: 'server',
+
+  // Server middleware for API
+  serverMiddleware: [
+    { path: '/api', handler: '~/server/api/chat.js' },
+    { path: '/api/test', handler: '~/server/api/test.js' }
+  ],
 
   // Global page headers: https://go.nuxtjs.dev/config-head
   head: {
@@ -41,6 +47,7 @@ export default {
 
   // Modules: https://go.nuxtjs.dev/config-modules
   modules: [
+    '@nuxtjs/dotenv'
   ],
 
   // Build Configuration: https://go.nuxtjs.dev/config-build

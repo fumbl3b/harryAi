@@ -1,19 +1,43 @@
-# harryAI
+# harryAI - Chat with OpenAI
 
-## Build Setup
+A simple chat interface for conversations with OpenAI's models.
 
+## Setup
+
+1. Install dependencies:
 ```bash
-# install dependencies
 $ yarn install
+```
 
-# serve with hot reload at localhost:3000
+2. Configure your OpenAI API key:
+   - Copy `.env.example` to `.env`
+   - Add your OpenAI API key to the `.env` file
+   - Optionally change the model (defaults to gpt-3.5-turbo)
+
+3. Run the development server:
+```bash
 $ yarn dev
+```
 
+Note: This app uses a server middleware to securely make OpenAI API calls. The API key never leaves your server, making this approach more secure for deployment.
+
+## Debugging OpenAI API
+
+If you're having issues with OpenAI API responses:
+
+1. Make sure your API key is correctly set in `.env`
+2. Run the app in development mode with `yarn dev:reset`
+3. Use the "Test API" button (visible in development mode) to verify your OpenAI connection
+4. Check the server console for detailed logs
+5. If needed, update the model in your `.env` file (e.g., `OPENAI_MODEL=gpt-4o`)
+
+4. Build for production:
+```bash
 # build for production and launch server
 $ yarn build
 $ yarn start
 
-# generate static project
+# or generate static project
 $ yarn generate
 ```
 
