@@ -7,7 +7,7 @@ export default {
 
   // Environment variables that should be available to both client and server
   publicRuntimeConfig: {
-    // Empty, we don't need client-side env vars
+    nodeEnv: process.env.NODE_ENV || 'development'
   },
 
   // Environment variables that should be available only on the server
@@ -58,8 +58,14 @@ export default {
 
   // Modules: https://go.nuxtjs.dev/config-modules
   modules: [
-    ['@nuxtjs/dotenv', { systemvars: true }]
+    '@nuxtjs/dotenv'
   ],
+
+  // Dotenv module configuration
+  dotenv: {
+    systemvars: true, // Load all system environment variables
+    path: './' // The directory where .env file is located
+  },
 
   // Build Configuration: https://go.nuxtjs.dev/config-build
   build: {

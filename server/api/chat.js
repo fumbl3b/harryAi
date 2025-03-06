@@ -1,25 +1,50 @@
 const OpenAI = require('openai');
 
+// Helper function to safely extract a Nuxt runtime config value
+function getConfigValue(req, key, defaultValue = null) {
+  try {
+    // First try to get from request context
+    if (req.context && 
+        req.context.nuxt && 
+        req.context.nuxt.options && 
+        req.context.nuxt.options.privateRuntimeConfig && 
+        req.context.nuxt.options.privateRuntimeConfig[key]) {
+      return req.context.nuxt.options.privateRuntimeConfig[key];
+    }
+    
+    // Then try to get from process.env directly
+    if (process.env[key]) {
+      return process.env[key];
+    }
+    
+    // Finally, fall back to the default value
+    return defaultValue;
+  } catch (error) {
+    console.warn(`[SERVER] Error accessing config value for ${key}:`, error.message);
+    return process.env[key] || defaultValue;
+  }
+}
+
 module.exports = async function(req, res) {
   console.log('[SERVER] Starting chat API middleware');
   
-  // Access Nuxt runtime config
-  const config = req.context ? req.context.nuxt.options : null;
-  const privateConfig = config ? config.privateRuntimeConfig : null;
-  
-  // Get API key from Nuxt config or fallback to process.env
-  const apiKey = privateConfig?.OPENAI_API_KEY || process.env.OPENAI_API_KEY;
-  const model = privateConfig?.OPENAI_MODEL || process.env.OPENAI_MODEL || 'gpt-4o-mini';
+  // Get environment variables safely
+  const apiKey = getConfigValue(req, 'OPENAI_API_KEY');
+  const model = getConfigValue(req, 'OPENAI_MODEL', 'gpt-4o-mini');
   
   console.log('[SERVER] Environment variables:', {
     OPENAI_API_KEY: apiKey ? '***' : 'not set',
-    OPENAI_MODEL: model || 'not set (will use default)'
+    OPENAI_MODEL: model || 'not set (will use default)',
+    NODE_ENV: process.env.NODE_ENV || 'not set'
   });
   
   if (!apiKey) {
     console.error('[SERVER] No OpenAI API key found!');
     res.statusCode = 500;
-    res.end(JSON.stringify({ error: 'Server configuration error: Missing API key' }));
+    res.end(JSON.stringify({ 
+      error: 'Server configuration error: Missing API key',
+      details: 'The API key is not set in environment variables'
+    }));
     return;
   }
 
@@ -73,12 +98,14 @@ module.exports = async function(req, res) {
     
     console.log('[SERVER] Sending to OpenAI:', JSON.stringify(messages));
     
+    console.log(`[SERVER] Using model: ${model}`);
+    
     // Call OpenAI API with updated parameters
     const response = await openai.chat.completions.create({
       model: model,
       messages,
       temperature: 0.7,
-      store: true, // Enable storing in OpenAI system
+      max_tokens: 1500 // Reasonable limit to avoid token issues
     });
     
     console.log('[SERVER] OpenAI response received:', JSON.stringify(response.choices[0].message));

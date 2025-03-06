@@ -1,25 +1,14 @@
 {
-  "version": 2,
   "builds": [
     {
       "src": "nuxt.config.js",
       "use": "@nuxtjs/vercel-builder",
       "config": {
-        "serverFiles": [
-          "server/**",
-          "services/**"
-        ]
+        "serverFiles": ["server/**", "services/**"]
       }
     }
   ],
-  "routes": [
-    {
-      "src": "/api/(.*)",
-      "dest": "/server/api/$1"
-    },
-    {
-      "src": "/(.*)",
-      "dest": "/"
-    }
-  ]
+  "env": {
+    "NODE_ENV": "production"
+  }
 }
