@@ -2,6 +2,13 @@ const OpenAI = require('openai');
 
 // This is a test endpoint to verify OpenAI API connectivity
 module.exports = async function (req, res) {
+  // Access Nuxt runtime config
+  const config = req.context ? req.context.nuxt.options : null;
+  const privateConfig = config ? config.privateRuntimeConfig : null;
+  
+  // Get API key from Nuxt config or fallback to process.env
+  const apiKey = privateConfig?.OPENAI_API_KEY || process.env.OPENAI_API_KEY;
+  const model = privateConfig?.OPENAI_MODEL || process.env.OPENAI_MODEL || 'gpt-4o-mini';
   // Set CORS headers
   res.setHeader('Access-Control-Allow-Origin', '*');
   res.setHeader('Access-Control-Allow-Methods', 'GET, OPTIONS');
@@ -25,24 +32,24 @@ module.exports = async function (req, res) {
     console.log('[TEST API] Starting OpenAI API test');
     console.log('[TEST API] Environment check:', {
       NODE_ENV: process.env.NODE_ENV,
-      OPENAI_API_KEY: process.env.OPENAI_API_KEY ? '***' : 'not set',
-      OPENAI_MODEL: process.env.OPENAI_MODEL || 'not set (will use default)'
+      OPENAI_API_KEY: apiKey ? '***' : 'not set',
+      OPENAI_MODEL: model || 'not set (will use default)'
     });
     
     // Check if API key is set
-    if (!process.env.OPENAI_API_KEY) {
+    if (!apiKey) {
       console.error('[TEST API] No API key provided');
       res.statusCode = 500;
       res.end(JSON.stringify({ 
         error: 'API key not configured',
-        message: 'Please set the OPENAI_API_KEY environment variable in your .env file'
+        message: 'Please set the OPENAI_API_KEY environment variable in Vercel project settings or .env file'
       }));
       return;
     }
     
     // Initialize OpenAI
     const openai = new OpenAI({
-      apiKey: process.env.OPENAI_API_KEY
+      apiKey: apiKey
     });
     
     console.log('[TEST API] Initialized OpenAI client, testing connection...');
@@ -53,7 +60,6 @@ module.exports = async function (req, res) {
       content: 'Return only the text "CONNECTION_SUCCESSFUL" without any additional text.'
     };
     
-    const model = process.env.OPENAI_MODEL || 'gpt-3.5-turbo';
     console.log(`[TEST API] Using model: ${model}`);
     
     const response = await openai.chat.completions.create({
@@ -75,8 +81,8 @@ module.exports = async function (req, res) {
       message: 'OpenAI API connection test successful',
       response: responseContent,
       model: model,
-      hasAPIKey: !!process.env.OPENAI_API_KEY,
-      apiKeyHint: process.env.OPENAI_API_KEY ? process.env.OPENAI_API_KEY.substring(0, 5) + '...' : 'not set'
+      hasAPIKey: !!apiKey,
+      apiKeyHint: apiKey ? apiKey.substring(0, 5) + '...' : 'not set'
     }));
   } catch (error) {
     console.error('[TEST API] Error calling OpenAI API:', error);
@@ -85,8 +91,8 @@ module.exports = async function (req, res) {
     res.end(JSON.stringify({ 
       error: 'Error calling OpenAI API',
       details: error.message,
-      hasAPIKey: !!process.env.OPENAI_API_KEY,
-      apiKeyHint: process.env.OPENAI_API_KEY ? process.env.OPENAI_API_KEY.substring(0, 5) + '...' : 'not set'
+      hasAPIKey: !!apiKey,
+      apiKeyHint: apiKey ? apiKey.substring(0, 5) + '...' : 'not set'
     }));
   }
 };

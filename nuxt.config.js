@@ -5,6 +5,17 @@ export default {
   // Target: https://go.nuxtjs.dev/config-target
   target: 'server',
 
+  // Environment variables that should be available to both client and server
+  publicRuntimeConfig: {
+    // Empty, we don't need client-side env vars
+  },
+
+  // Environment variables that should be available only on the server
+  privateRuntimeConfig: {
+    OPENAI_API_KEY: process.env.OPENAI_API_KEY,
+    OPENAI_MODEL: process.env.OPENAI_MODEL || 'gpt-4o-mini'
+  },
+
   // Server middleware for API
   serverMiddleware: [
     { path: '/api', handler: '~/server/api/chat.js' },
@@ -47,7 +58,7 @@ export default {
 
   // Modules: https://go.nuxtjs.dev/config-modules
   modules: [
-    '@nuxtjs/dotenv'
+    ['@nuxtjs/dotenv', { systemvars: true }]
   ],
 
   // Build Configuration: https://go.nuxtjs.dev/config-build

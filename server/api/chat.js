@@ -1,19 +1,34 @@
 const OpenAI = require('openai');
 
-console.log('[SERVER] Starting chat API middleware');
-console.log('[SERVER] Environment variables:', {
-  OPENAI_API_KEY: process.env.OPENAI_API_KEY ? '***' : 'not set',
-  OPENAI_MODEL: process.env.OPENAI_MODEL || 'not set (will use default)'
-});
+module.exports = async function(req, res) {
+  console.log('[SERVER] Starting chat API middleware');
+  
+  // Access Nuxt runtime config
+  const config = req.context ? req.context.nuxt.options : null;
+  const privateConfig = config ? config.privateRuntimeConfig : null;
+  
+  // Get API key from Nuxt config or fallback to process.env
+  const apiKey = privateConfig?.OPENAI_API_KEY || process.env.OPENAI_API_KEY;
+  const model = privateConfig?.OPENAI_MODEL || process.env.OPENAI_MODEL || 'gpt-4o-mini';
+  
+  console.log('[SERVER] Environment variables:', {
+    OPENAI_API_KEY: apiKey ? '***' : 'not set',
+    OPENAI_MODEL: model || 'not set (will use default)'
+  });
+  
+  if (!apiKey) {
+    console.error('[SERVER] No OpenAI API key found!');
+    res.statusCode = 500;
+    res.end(JSON.stringify({ error: 'Server configuration error: Missing API key' }));
+    return;
+  }
 
-// Initialize OpenAI client
-const openai = new OpenAI({
-  apiKey: process.env.OPENAI_API_KEY
-});
+  // Initialize OpenAI client
+  const openai = new OpenAI({
+    apiKey: apiKey
+  });
 
-console.log('[SERVER] OpenAI client initialized');
-
-module.exports = async function (req, res) {
+  console.log('[SERVER] OpenAI client initialized');
   // Set CORS headers
   res.setHeader('Access-Control-Allow-Origin', '*');
   res.setHeader('Access-Control-Allow-Methods', 'POST, OPTIONS');
@@ -60,7 +75,7 @@ module.exports = async function (req, res) {
     
     // Call OpenAI API with updated parameters
     const response = await openai.chat.completions.create({
-      model: process.env.OPENAI_MODEL || 'gpt-3.5-turbo',
+      model: model,
       messages,
       temperature: 0.7,
       store: true, // Enable storing in OpenAI system
