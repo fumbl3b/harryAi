@@ -26,15 +26,19 @@ export default {
 
       commit('SET_LOADING', true);
       
-      // Convert state messages to OpenAI format
-      const messages = state.messages
-        .filter(msg => !msg.isTyping) // Filter out typing indicators
-        .map(msg => ({
-          role: msg.isUser ? 'user' : 'assistant',
-          content: msg.text
-        }));
+      // Use the messageHistory array with the full conversation history
+      // This array contains objects with { role, content } as expected by OpenAI
+      const messages = [...state.messageHistory]; 
       
-      console.log('[STORE] Prepared messages for API:', JSON.stringify(messages));
+      // More detailed logging for debugging message history
+      console.log('[STORE] Conversation history in state:', JSON.stringify(state.messageHistory));
+      console.log('[STORE] Messages array length:', messages.length);
+      
+      // Log the conversation history being sent to the API
+      console.log('[STORE] Sending full conversation history to API:');
+      messages.forEach((msg, i) => {
+        console.log(`[STORE] History[${i}]: ${msg.role} - ${msg.content.substring(0, 30)}${msg.content.length > 30 ? '...' : ''}`);
+      });
 
       try {
         // Stream the response character by character

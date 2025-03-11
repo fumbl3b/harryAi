@@ -165,6 +165,9 @@ export default {
     messages() {
       return this.$store.getters['chat/getAllMessages'];
     },
+    messageHistory() {
+      return this.$store.getters['chat/getMessageHistory'];
+    },
     error() {
       return this.$store.getters['chat/getError'];
     },
@@ -311,79 +314,15 @@ export default {
       // This ensures we always scroll to the bottom when the user sends a message
       this.userHasScrolled = false;
 
-      // 1. Show the user's message in the UI
-      this.$store.commit('chat/ADD_MESSAGE', {
-        text: messageText,
-        isUser: true
-      });
-      
-      // Scroll to bottom after adding user message
-      this.scrollToBottom();
-
-      // 2. Show a loading indicator with typing animation
-      this.$store.commit('chat/ADD_MESSAGE', {
-        text: '...',
-        isUser: false,
-        isTyping: true
-      });
-      
-      // Scroll to bottom again after adding loading indicator
-      this.scrollToBottom();
-
+      // Use the store action to send the message
+      // This will use the full conversation history
       try {
-        // 3. Call the OpenAI API directly
-        const response = await fetch('/api', {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-          },
-          body: JSON.stringify({ 
-            messages: [{
-              role: 'user',
-              content: messageText
-            }]
-          }),
-        });
+        await this.$store.dispatch('chat/sendMessage', messageText);
         
-        const data = await response.json();
-        console.log('API Response:', data);
-        
-        // 4. Update the message with the response content
-        if (data.message && data.message.content) {
-          // Replace the loading message with the actual response
-          this.$store.commit('chat/UPDATE_LAST_MESSAGE', {
-            text: data.message.content,
-            isUser: false,
-            isTyping: false
-          });
-          
-          // Force Vue to update the DOM immediately
-          this.$forceUpdate();
-          
-          // Smoothly scroll to bottom after receiving response
-          this.scrollToBottom(true);
-        } else {
-          // Handle error case
-          this.$store.commit('chat/UPDATE_LAST_MESSAGE', {
-            text: 'Sorry, I could not generate a response.',
-            isUser: false,
-            isTyping: false
-          });
-          
-          // Force Vue to update the DOM immediately
-          this.$forceUpdate();
-          
-          // Smoothly scroll to bottom after updating error message
-          this.scrollToBottom(true);
-        }
+        // Smoothly scroll to bottom after receiving response
+        this.scrollToBottom(true);
       } catch (error) {
         console.error('Failed to send message:', error);
-        // Update loading message with error
-        this.$store.commit('chat/UPDATE_LAST_MESSAGE', {
-          text: 'Error: Could not connect to the API.',
-          isUser: false,
-          isTyping: false
-        });
         
         // Scroll to bottom after showing error (with smooth animation)
         this.scrollToBottom(true);
@@ -403,6 +342,8 @@ export default {
       // Small delay before sending
       setTimeout(() => {
         this.isTyping = false;
+        
+        // Use the store action through sendMessage which now properly uses history
         this.sendMessage();
       }, 100);
     },
@@ -801,6 +742,7 @@ export default {
 .clear-button:hover {
   background-color: rgba(255, 255, 255, 0.2);
 }
+
 
 /* Message styling */
 .message-content {

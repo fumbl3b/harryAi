@@ -8,7 +8,30 @@ export default class OpenAIService {
     try {
       // Only log in development mode
       if (process.env.NODE_ENV === 'development') {
-        console.log('[CLIENT] Sending messages to API:', JSON.stringify(messages));
+        console.log('[CLIENT] OpenAI API - Sending full conversation history:');
+        console.log(`[CLIENT] Total history messages: ${messages.length}`);
+        
+        // Ensure all messages follow OpenAI format {role, content}
+        const validStructure = messages.every(msg => 
+          msg && typeof msg === 'object' && 
+          ['user', 'assistant', 'system'].includes(msg.role) && 
+          typeof msg.content === 'string' && msg.content.trim() !== ''
+        );
+        
+        if (!validStructure) {
+          console.error('[CLIENT] Invalid message structure detected in history!');
+          // Print the problematic messages
+          messages.forEach((msg, i) => {
+            if (!msg || typeof msg !== 'object' || !['user', 'assistant', 'system'].includes(msg.role) || typeof msg.content !== 'string') {
+              console.error(`[CLIENT] Invalid message at index ${i}:`, msg);
+            }
+          });
+        }
+        
+        // Log the full conversation history
+        messages.forEach((msg, index) => {
+          console.log(`[CLIENT] History[${index}]: ${msg.role} - ${msg.content.substring(0, 50)}${msg.content.length > 50 ? '...' : ''}`);
+        });
       }
       
       const response = await fetch('/api', {
@@ -57,7 +80,18 @@ export default class OpenAIService {
   async streamMessage(messages, onChunk) {
     try {
       if (process.env.NODE_ENV === 'development') {
-        console.log('[CLIENT] streamMessage called with messages:', JSON.stringify(messages));
+        console.log('[CLIENT] OpenAI API (streaming) - Using full conversation history:');
+        console.log(`[CLIENT] Streaming with history length: ${messages.length}`);
+        
+        // Quick validation before sending to API
+        if (!Array.isArray(messages) || messages.length === 0) {
+          console.error('[CLIENT] Warning: Invalid or empty message history array!');
+        }
+        
+        // Log the history being used for context
+        messages.forEach((msg, index) => {
+          console.log(`[CLIENT] History[${index}]: ${msg.role} - ${msg.content.substring(0, 40)}${msg.content.length > 40 ? '...' : ''}`);
+        });
       }
       
       // Get the full response first
@@ -73,38 +107,37 @@ export default class OpenAIService {
         throw new Error('Empty response from API');
       }
       
-      // Stream character by character for a more realistic effect
+      // Stream in larger chunks for faster output (2-3 seconds total)
       const characters = fullResponse.split('');
       let streamedResponse = '';
       
-      // Send the first few characters immediately to create immediate feedback
-      const initialChunkSize = Math.min(5, characters.length);
-      if (initialChunkSize > 0) {
-        const initialChunk = characters.slice(0, initialChunkSize).join('');
-        streamedResponse += initialChunk;
-        
-        if (process.env.NODE_ENV === 'development') {
-          console.log('[CLIENT] Sending initial characters:', initialChunk);
-        }
-        
-        if (onChunk) onChunk(initialChunk);
-      }
+      // Calculate total characters and timing to complete in ~2.5 seconds
+      const totalChars = characters.length;
+      const targetTimeMs = 2500; // 2.5 seconds
       
-      // Process the rest with small delays
-      for (let i = initialChunkSize; i < characters.length; i++) {
-        // Random delay between 10-40ms for more natural typing
-        const delay = Math.floor(Math.random() * 30) + 10;
-        await new Promise(resolve => setTimeout(resolve, delay));
+      // For very short responses, just return immediately
+      if (totalChars < 100) {
+        streamedResponse = fullResponse;
+        if (onChunk) onChunk(fullResponse);
+      } else {
+        // Determine optimal chunk size and delay
+        // We'll aim for ~20 chunks to complete in 2.5 seconds
+        const numChunks = 20;
+        const chunkSize = Math.ceil(totalChars / numChunks);
+        const delayBetweenChunks = Math.floor(targetTimeMs / numChunks);
         
-        const char = characters[i];
-        streamedResponse += char;
-        
-        if (onChunk) onChunk(char);
-        
-        // Every 20 characters, create a slightly longer pause 
-        // (like a natural pause in typing)
-        if (i % 20 === 0) {
-          await new Promise(resolve => setTimeout(resolve, 70));
+        // Send chunks with calculated timing
+        for (let i = 0; i < totalChars; i += chunkSize) {
+          const end = Math.min(i + chunkSize, totalChars);
+          const chunk = characters.slice(i, end).join('');
+          streamedResponse += chunk;
+          
+          if (onChunk) onChunk(chunk);
+          
+          // Add a small delay between chunks (skip delay on last chunk)
+          if (i + chunkSize < totalChars) {
+            await new Promise(resolve => setTimeout(resolve, delayBetweenChunks));
+          }
         }
       }
       
@@ -128,59 +161,37 @@ export default class OpenAIService {
       return ['No response'];
     }
     
-    // For very short responses, return immediately as a single chunk
-    if (text.length < 50) {
+    // For short responses, return as a single chunk
+    if (text.length < 200) {
       return [text];
     }
     
-    // For longer responses, make sure we return a good first chunk immediately
+    // For longer responses, split into larger chunks
+    // Calculate how many chunks we need to create (aiming for ~5-10 chunks)
+    const targetChunkSize = Math.ceil(text.length / 8);
     const chunks = [];
     
-    // Extract first sentence or first 30 characters for immediate display
-    const firstSentenceMatch = text.match(/^[^.!?]*[.!?]/);
-    if (firstSentenceMatch && firstSentenceMatch[0]) {
-      // We found a complete first sentence
-      chunks.push(firstSentenceMatch[0]);
-      text = text.substring(firstSentenceMatch[0].length);
-    } else {
-      // No complete sentence found, take first chunk with a reasonable size
-      const firstChunk = text.substring(0, Math.min(30, text.length));
-      chunks.push(firstChunk);
-      text = text.substring(firstChunk.length);
-    }
+    // Try to split at sentence boundaries
+    const sentences = text.split(/(?<=[.!?])\s+/);
+    let currentChunk = '';
     
-    // Process the remaining text
-    if (text.length > 0) {
-      // Split by spaces and punctuation, trying to keep natural breaks
-      let currentChunk = '';
-      
-      // Split on sentence boundaries first
-      const sentences = text.split(/(?<=[.!?])\s+/);
-      
-      for (const sentence of sentences) {
-        // For each sentence, break it down further
-        const words = sentence.split(/\s+/);
-        
-        for (const word of words) {
-          currentChunk += (currentChunk ? ' ' : '') + word;
-          
-          // Create a chunk after accumulating a few words or at punctuation
-          if (currentChunk.length >= 5 && /[.,;!?]$/.test(currentChunk)) {
-            chunks.push(currentChunk);
-            currentChunk = '';
-          }
-        }
-        
-        // If there's a remaining chunk after processing all words in a sentence
-        if (currentChunk) {
-          chunks.push(currentChunk);
-          currentChunk = '';
-        }
+    sentences.forEach(sentence => {
+      // If adding this sentence exceeds target chunk size, push current chunk
+      if (currentChunk.length + sentence.length > targetChunkSize && currentChunk.length > 0) {
+        chunks.push(currentChunk.trim());
+        currentChunk = '';
       }
+      
+      currentChunk += (currentChunk ? ' ' : '') + sentence;
+    });
+    
+    // Add any remaining text as the final chunk
+    if (currentChunk.trim()) {
+      chunks.push(currentChunk.trim());
     }
     
-    // Fallback: If we somehow ended up with only the initial chunk, just return the whole text
-    if (chunks.length <= 1) {
+    // Fallback: If something went wrong, return the whole text as a single chunk
+    if (chunks.length === 0) {
       return [text];
     }
     
