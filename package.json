@@ -7,11 +7,17 @@
     "build": "nuxt build",
     "start": "nuxt start",
     "generate": "nuxt generate",
-    "test": "jest"
+    "test": "jest",
+    "build:vercel": "nuxt build",
+    "vercel-build": "nuxt build",
+    "check-env": "node -e \"console.log('Environment check:', {NODE_ENV: process.env.NODE_ENV, OPENAI_API_KEY: process.env.OPENAI_API_KEY ? '***' : 'not set', OPENAI_MODEL: process.env.OPENAI_MODEL || 'not set'});\""
   },
   "dependencies": {
+    "@nuxtjs/dotenv": "^1.4.2",
     "core-js": "^3.25.3",
-    "nuxt": "^2.15.8",
+    "marked": "^15.0.7",
+    "nuxt": "^2.18.1",
+    "openai": "^4.86.2",
     "vue": "^2.7.10",
     "vue-server-renderer": "^2.7.10",
     "vue-template-compiler": "^2.7.10"
@@ -26,5 +32,8 @@
     "jest-environment-jsdom": "^29.1.2",
     "ts-jest": "^29.0.3",
     "vue-jest": "^3.0.4"
+  },
+  "engines": {
+    "node": ">=16.0.0"
   }
 }

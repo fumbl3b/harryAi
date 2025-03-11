@@ -3,7 +3,24 @@ export default {
   ssr: false,
 
   // Target: https://go.nuxtjs.dev/config-target
-  target: 'static',
+  target: 'server',
+
+  // Environment variables that should be available to both client and server
+  publicRuntimeConfig: {
+    nodeEnv: process.env.NODE_ENV || 'development'
+  },
+
+  // Environment variables that should be available only on the server
+  privateRuntimeConfig: {
+    OPENAI_API_KEY: process.env.OPENAI_API_KEY,
+    OPENAI_MODEL: process.env.OPENAI_MODEL || 'gpt-4o-mini'
+  },
+
+  // Server middleware for API
+  serverMiddleware: [
+    { path: '/api', handler: '~/server/api/chat.js' },
+    { path: '/api/test', handler: '~/server/api/test.js' }
+  ],
 
   // Global page headers: https://go.nuxtjs.dev/config-head
   head: {
@@ -41,7 +58,14 @@ export default {
 
   // Modules: https://go.nuxtjs.dev/config-modules
   modules: [
+    '@nuxtjs/dotenv'
   ],
+
+  // Dotenv module configuration
+  dotenv: {
+    systemvars: true, // Load all system environment variables
+    path: './' // The directory where .env file is located
+  },
 
   // Build Configuration: https://go.nuxtjs.dev/config-build
   build: {

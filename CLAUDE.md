@@ -1,21 +1,41 @@
 # harryAI Development Guide
 
 ## Commands
-- Build: `yarn build`
+
+### Build & Run
 - Dev server: `yarn dev` (localhost:3000)
-- Generate static: `yarn generate`
+- Build: `yarn build`
+- Start (production): `yarn start`
+- Generate static site: `yarn generate`
+
+### Test
 - Run all tests: `yarn test`
 - Run single test: `jest test/path/to/test.spec.js`
+- Run tests with filter: `yarn test -t "test description"`
 - Lint: Add eslint with `yarn add -D eslint @nuxtjs/eslint-config-typescript`
 
 ## Code Style
-- **TypeScript**: Use strict types; all new files should use TypeScript
-- **Components**: Vue 2 composition API, Single File Components
-- **Imports**: Import paths should use `@/` or `~/` aliases
-- **Naming**: PascalCase for components, camelCase for variables/functions
-- **Error Handling**: Use try/catch for async operations
-- **CSS**: Use Tailwind utility classes when possible
-- **Testing**: Jest with Vue Test Utils for component testing
+
+### Structure
+- Framework: Nuxt.js (Vue 2.7)
+- TypeScript with strict mode enabled
+- Module paths: Use `~/` or `@/` aliases for imports from project root
+
+### Vue Components
+- Use `.vue` single-file components
+- Maintain consistent component structure (template, script, style)
+- Use PascalCase for component names
+- Keep components focused on a single responsibility
+
+### TypeScript
+- Prefer explicit typing over `any`
+- Use async/await for asynchronous operations
+- Follow Vue's typing conventions for components and props
+- Use try/catch for proper error handling
+
+### CSS
+- Use Tailwind utility classes when possible
+- Maintain consistent styling patterns
 
 ## Project Structure
 - Components in `/components`
