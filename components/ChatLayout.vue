@@ -19,7 +19,7 @@
     </div>
 
     <h1 v-if="!isChat" class="main-heading" :style="{ fontFamily: currentFont }">
-      What can I help with ?
+      <span class="typing-text">{{ displayedHeading }}</span><span class="cursor" :class="{ blink: isHeadingDone }">|</span>
     </h1>
 
     <!-- Input container (position changes based on isChat) -->
@@ -98,6 +98,9 @@ export default {
       isChat: false,
       isGlitching: false,
       isTyping: false,
+      headingText: "What can I help with?",
+      displayedHeading: "",
+      isHeadingDone: false,
       typeText: "Can you explain in great detail, who would win in a fight between superman and goku?",
       navTexts: {
         0: "Can you solve a difficult math problem for me?",
@@ -109,7 +112,32 @@ export default {
       }
     };
   },
+  mounted() {
+    this.animateHeading();
+  },
   methods: {
+    animateHeading() {
+      if (this.displayedHeading.length < this.headingText.length) {
+        const charIndex = this.displayedHeading.length;
+        this.displayedHeading += this.headingText.charAt(charIndex);
+        
+        // Random typing speed between 70-150ms for natural effect
+        const typingSpeed = Math.floor(Math.random() * 80) + 70;
+        
+        setTimeout(() => {
+          this.animateHeading();
+        }, typingSpeed);
+      } else {
+        this.isHeadingDone = true;
+        
+        // After finishing, randomly glitch the font occasionally
+        setInterval(() => {
+          if (Math.random() < 0.1 && !this.isGlitching) { // 10% chance to glitch
+            this.glitchFonts();
+          }
+        }, 5000);
+      }
+    },
     onButtonHover(index, isHovering) {
       this.buttonStyles[index].transform = isHovering ? 'scale(1.05)' : 'scale(1)';
     },
@@ -128,7 +156,7 @@ export default {
       
       let cycles = 0;
       const maxCycles = 15;
-      const interval = 50; // ms between changes
+      const interval = 50; // ms
 
       const glitchInterval = setInterval(() => {
         this.currentFontIndex = (this.currentFontIndex + 1) % this.fonts.length;
@@ -445,6 +473,27 @@ export default {
 
 .fade-move {
   transition: transform 0.5s ease;
+}
+
+.typing-text {
+  display: inline-block;
+}
+
+.cursor {
+  display: inline-block;
+  color: #fff;
+  font-weight: normal;
+  margin-left: 1px;
+}
+
+.cursor.blink {
+  animation: blink-animation 1s steps(2, start) infinite;
+}
+
+@keyframes blink-animation {
+  to {
+    visibility: hidden;
+  }
 }
 
 .input-container {
